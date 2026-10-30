@@ -11,7 +11,42 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  verify-android:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+          cache: npm
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Compile and test Android plugin
+        run: npm run verify:android
+
+  verify-ios:
+    if: github.ref == 'refs/heads/main'
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Install iOS dependencies
+        working-directory: ios
+        run: pod install
+      - name: Compile iOS plugin
+        working-directory: ios
+        run: xcodebuild -workspace Plugin.xcworkspace -scheme Plugin -destination generic/platform=iOS CODE_SIGNING_ALLOWED=NO build
+
   publish:
+    needs: [verify-android, verify-ios]
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:
