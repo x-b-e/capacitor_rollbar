@@ -40,7 +40,10 @@ jobs:
       - run: npm ci --ignore-scripts --no-audit --no-fund
       - name: Install iOS dependencies
         working-directory: ios
-        run: pod install
+        run: |
+          pod install
+          pod ipc spec ../ColensoCapacitorRollbar.podspec > ../podspec.json
+          node -e "const fs = require('fs'); const crypto = require('crypto'); console.log('PODSPEC_CHECKSUM=' + crypto.createHash('sha1').update(fs.readFileSync('../podspec.json', 'utf8').trim()).digest('hex'));"
       - name: Compile iOS plugin
         working-directory: ios
         run: xcodebuild -workspace Plugin.xcworkspace -scheme Plugin -destination generic/platform=iOS CODE_SIGNING_ALLOWED=NO build
