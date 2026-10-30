@@ -74,6 +74,8 @@ jobs:
           pod install
           pod ipc spec ../ColensoCapacitorRollbar.podspec > ../podspec.json
           node -e "const fs = require('fs'); const crypto = require('crypto'); console.log('PODSPEC_CHECKSUM=' + crypto.createHash('sha1').update(fs.readFileSync('../podspec.json', 'utf8').trim()).digest('hex'));"
+          pod ipc spec ../XBECapacitorRollbar.podspec > ../xbe-podspec.json
+          node -e "const fs = require('fs'); const crypto = require('crypto'); console.log('XBE_PODSPEC_CHECKSUM=' + crypto.createHash('sha1').update(fs.readFileSync('../xbe-podspec.json', 'utf8').trim()).digest('hex'));"
       - name: Compile iOS plugin
         working-directory: ios
         run: xcodebuild -workspace Plugin.xcworkspace -scheme Plugin -destination generic/platform=iOS CODE_SIGNING_ALLOWED=NO IPHONEOS_DEPLOYMENT_TARGET=15.0 build
