@@ -30,6 +30,7 @@ jobs:
         run: |
           verification_root="$RUNNER_TEMP/rollbar-android"
           mkdir -p "$verification_root"
+          printf 'android.useAndroidX=true\n' > "$verification_root/gradle.properties"
           npm install --prefix "$verification_root" --no-save --package-lock=false --ignore-scripts --no-audit --no-fund @capacitor/android@8.5.1 @capacitor/core@8.5.1
           cat > "$verification_root/settings.gradle" <<'GRADLE'
           rootProject.name = 'RollbarVerification'
