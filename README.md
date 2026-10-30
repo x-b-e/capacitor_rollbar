@@ -2,6 +2,8 @@
 
 Capacitor Rollbar Plugin is a custom Capacitor plugin that integrates the Rollbar SDK into your Android app, allowing you to capture and report errors to the Rollbar platform.
 
+Maintained by XBE and published as @x-b-e/capacitor-rollbar on GitHub Packages. The source and package are public; GitHub requires authentication for npm downloads.
+
 ## Installation
 
 To use this plugin in your Capacitor project, follow these steps:
@@ -9,9 +11,9 @@ To use this plugin in your Capacitor project, follow these steps:
 1. Install the plugin using npm or yarn:
 
 ```bash
-npm install capacitor-rollbar
+npm install @x-b-e/capacitor-rollbar
 # or
-yarn add capacitor-rollbar
+yarn add @x-b-e/capacitor-rollbar
 ```
 
 ## Android Setup
