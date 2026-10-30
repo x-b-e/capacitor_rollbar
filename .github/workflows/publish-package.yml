@@ -19,14 +19,39 @@ jobs:
       - uses: actions/setup-node@v6
         with:
           node-version: '22'
-          cache: npm
       - uses: actions/setup-java@v5
         with:
           distribution: temurin
-          java-version: '17'
-      - run: npm ci --ignore-scripts --no-audit --no-fund
-      - name: Compile and test Android plugin
-        run: npm run verify:android
+          java-version: '21'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.14.3'
+      - name: Compile Android plugin against the client SDK
+        run: |
+          verification_root="$RUNNER_TEMP/rollbar-android"
+          mkdir -p "$verification_root"
+          npm install --prefix "$verification_root" --no-save --package-lock=false --ignore-scripts --no-audit --no-fund @capacitor/android@8.5.1 @capacitor/core@8.5.1
+          cat > "$verification_root/settings.gradle" <<'GRADLE'
+          rootProject.name = 'RollbarVerification'
+          include ':capacitor-android'
+          project(':capacitor-android').projectDir = new File(settingsDir, 'node_modules/@capacitor/android/capacitor')
+          include ':capacitor-rollbar'
+          project(':capacitor-rollbar').projectDir = new File(System.getenv('GITHUB_WORKSPACE'), 'android')
+          GRADLE
+          cat > "$verification_root/build.gradle" <<'GRADLE'
+          buildscript {
+              repositories { google(); mavenCentral() }
+              dependencies { classpath 'com.android.tools.build:gradle:8.13.0' }
+          }
+          ext {
+              minSdkVersion = 26
+              compileSdkVersion = 36
+              targetSdkVersion = 36
+              androidxAppCompatVersion = '1.7.1'
+          }
+          allprojects { repositories { google(); mavenCentral() } }
+          GRADLE
+          gradle -p "$verification_root" :capacitor-rollbar:assembleDebug
 
   verify-ios:
     if: github.ref == 'refs/heads/main'
@@ -38,6 +63,10 @@ jobs:
           node-version: '22'
           cache: npm
       - run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Use the client SDK for native verification
+        run: |
+          npm install --no-save --package-lock=false --legacy-peer-deps --ignore-scripts --no-audit --no-fund @capacitor/core@8.5.1 @capacitor/ios@8.5.1
+          sed -i '' "s/platform :ios, '13.0'/platform :ios, '15.0'/" ios/Podfile
       - name: Install iOS dependencies
         working-directory: ios
         run: |
@@ -46,7 +75,7 @@ jobs:
           node -e "const fs = require('fs'); const crypto = require('crypto'); console.log('PODSPEC_CHECKSUM=' + crypto.createHash('sha1').update(fs.readFileSync('../podspec.json', 'utf8').trim()).digest('hex'));"
       - name: Compile iOS plugin
         working-directory: ios
-        run: xcodebuild -workspace Plugin.xcworkspace -scheme Plugin -destination generic/platform=iOS CODE_SIGNING_ALLOWED=NO build
+        run: xcodebuild -workspace Plugin.xcworkspace -scheme Plugin -destination generic/platform=iOS CODE_SIGNING_ALLOWED=NO IPHONEOS_DEPLOYMENT_TARGET=15.0 build
 
   publish:
     needs: [verify-android, verify-ios]
