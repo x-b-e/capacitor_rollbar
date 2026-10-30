@@ -1,0 +1,75 @@
+name: Publish GitHub package
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: publish-package
+  cancel-in-progress: false
+
+jobs:
+  verify-android:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+          cache: npm
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Compile and test Android plugin
+        run: npm run verify:android
+
+  verify-ios:
+    if: github.ref == 'refs/heads/main'
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Install iOS dependencies
+        working-directory: ios
+        run: |
+          pod install
+          pod ipc spec ../ColensoCapacitorRollbar.podspec > ../podspec.json
+          node -e "const fs = require('fs'); const crypto = require('crypto'); console.log('PODSPEC_CHECKSUM=' + crypto.createHash('sha1').update(fs.readFileSync('../podspec.json', 'utf8').trim()).digest('hex'));"
+      - name: Compile iOS plugin
+        working-directory: ios
+        run: xcodebuild -workspace Plugin.xcworkspace -scheme Plugin -destination generic/platform=iOS CODE_SIGNING_ALLOWED=NO build
+
+  publish:
+    needs: [verify-android, verify-ios]
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+          registry-url: https://npm.pkg.github.com
+          scope: '@x-b-e'
+          cache: npm
+      - name: Install build dependencies
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Build package
+        run: npm run build
+      - name: Inspect published files
+        run: npm pack --dry-run --ignore-scripts
+      - name: Publish package
+        run: npm publish --ignore-scripts
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
